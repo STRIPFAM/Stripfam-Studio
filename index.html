@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STRIPFAM STUDIO - Management</title>
+  <!-- Tailwind CSS CDN for Dark Theme UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background-color: #151d30; border: 1px solid #1e293b; border-radius: 12px; }
+  </style>
+</head>
+<body class="min-h-screen p-4 flex flex-col items-center">
+
+  <!-- Header -->
+  <header class="w-full max-w-4xl flex justify-between items-center py-4 mb-6 border-b border-slate-800">
+    <div>
+      <h1 class="text-2xl font-black text-rose-500 tracking-wider">STRIPFAM STUDIO</h1>
+      <p class="text-xs text-slate-400">Model & Earnings Management</p>
+    </div>
+    <div id="authStatus" class="hidden">
+      <button onclick="logout()" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg">Logout</button>
+    </div>
+  </header>
+
+  <!-- Login Card -->
+  <div id="loginCard" class="w-full max-w-md card p-6 mt-10 shadow-xl">
+    <h2 class="text-lg font-bold text-center text-white mb-4">Login / உள்நுழைக</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Email</label>
+        <input type="email" id="loginEmail" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-rose-500" placeholder="admin@stripfam.com">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Password</label>
+        <input type="password" id="loginPassword" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-rose-500" placeholder="••••••••">
+      </div>
+      <button onclick="login()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-lg transition duration-200">Sign In</button>
+      <p id="loginError" class="text-xs text-red-400 text-center hidden"></p>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Container -->
+  <main id="dashboard" class="w-full max-w-4xl hidden space-y-6">
+
+    <!-- Overview Statistics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="card p-4">
+        <p class="text-xs text-slate-400">Total Tokens</p>
+        <h3 id="statTokens" class="text-xl font-bold text-white mt-1">0</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400">Gross Earnings</p>
+        <h3 id="statGross" class="text-xl font-bold text-emerald-400 mt-1">₹0.00</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400">Total Paid</p>
+        <h3 id="statPaid" class="text-xl font-bold text-blue-400 mt-1">₹0.00</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400">Pending Amount</p>
+        <h3 id="statPending" class="text-xl font-bold text-amber-400 mt-1">₹0.00</h3>
+      </div>
+    </div>
+
+    <!-- Admin Section: Record Entry Form -->
+    <div id="adminControls" class="card p-5 hidden">
+      <h3 class="text-sm font-bold text-rose-400 mb-3 uppercase tracking-wider">வாரம் மற்றும் டோக்கன் விவரம் சேர்க்க (Add Weekly Record)</h3>
+      <form id="recordForm" onsubmit="saveRecord(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Model Name</label>
+          <select id="recordModel" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" required>
+            <!-- Injected via JS -->
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Week Start Date</label>
+          <input type="date" id="recordStart" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Week End Date</label>
+          <input type="date" id="recordEnd" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Token Count</label>
+          <input type="number" id="recordTokens" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" placeholder="0" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Rate Per Token (₹)</label>
+          <input type="number" step="0.01" id="recordRate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" placeholder="3.50" required>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Adjustments (₹)</label>
+          <input type="number" step="0.01" id="recordAdj" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white" value="0.00">
+        </div>
+        <div class="md:col-span-3 flex justify-end">
+          <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold px-5 py-2 rounded-lg">Save Record</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Records History List -->
+    <div class="card p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider">வாராந்திர பதிவுகள் (Records)</h3>
+        <button onclick="exportCSV()" id="exportBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700">Export CSV</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="text-slate-500 uppercase bg-slate-900/50 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Model</th>
+              <th class="p-3">Period</th>
+              <th class="p-3">Tokens</th>
+              <th class="p-3">Rate</th>
+              <th class="p-3">Payable</th>
+              <th class="p-3">Status</th>
+              <th id="actionTh" class="p-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody" class="divide-y divide-slate-800/50">
+            <!-- Injected via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // --- SUPABASE CONFIGURATION ---
+    const SUPABASE_URL = "https://svqkxphciagggkshinag.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cWt4cGhjaWFnZ2drc2hpbmFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMDU3NjMsImV4cCI6MjEwODU4MTc2M30.MP_1SglN_xlgMlQK3K3F3zSuVanoCLlVKv8w31rXRyE";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let userRole = null;
+    let modelsList = [];
+    let recordsList = [];
+
+    // Check Auth State on Page Load
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        handleUserSession(session.user);
+      }
+    });
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errBox = document.getElementById('loginError');
+      errBox.classList.add('hidden');
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        errBox.textContent = error.message;
+        errBox.classList.remove('hidden');
+      } else {
+        handleUserSession(data.user);
+      }
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
+
+    async function handleUserSession(user) {
+      currentUser = user;
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('authStatus').classList.remove('hidden');
+
+      // Check Role from profiles table
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      userRole = profile ? profile.role : 'model';
+
+      if (userRole === 'admin') {
+        document.getElementById('adminControls').classList.remove('hidden');
+        await loadModels();
+      } else {
+        document.getElementById('actionTh').classList.add('hidden');
+        document.getElementById('exportBtn').classList.add('hidden');
+      }
+
+      await loadRecords();
+    }
+
+    async function loadModels() {
+      const { data, error } = await supabase.from('models').select('*').order('name');
+      if (!error && data) {
+        modelsList = data;
+        const select = document.getElementById('recordModel');
+        select.innerHTML = '<option value="">Select Model</option>';
+        data.forEach(m => {
+          select.innerHTML += `<option value="${m.id}" data-rate="${m.rate_per_token}">${m.name} (₹${m.rate_per_token})</option>`;
+        });
+
+        select.addEventListener('change', (e) => {
+          const selected = select.options[select.selectedIndex];
+          if (selected && selected.dataset.rate) {
+            document.getElementById('recordRate').value = selected.dataset.rate;
+          }
+        });
+      }
+    }
+
+    async function loadRecords() {
+      let query = supabase.from('weekly_records').select('*, models(name)').order('week_start_date', { ascending: false });
+      const { data, error } = await query;
+      if (error) return;
+
+      recordsList = data || [];
+      renderRecords();
+      calculateStats();
+    }
+
+    function renderRecords() {
+      const tbody = document.getElementById('recordsTableBody');
+      tbody.innerHTML = '';
+
+      if (recordsList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">பதிவுகள் எதுவும் இல்லை</td></tr>`;
+        return;
+      }
+
+      recordsList.forEach(rec => {
+        const modelName = rec.models ? rec.models.name : 'Unknown';
+        const statusBadge = rec.payment_status === 'Paid'
+          ? '<span class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Paid</span>'
+          : '<span class="bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded text-[10px]">Pending</span>';
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/30";
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-white">${modelName}</td>
+          <td class="p-3 text-slate-400">${rec.week_start_date} to ${rec.week_end_date}</td>
+          <td class="p-3">${rec.token_count.toLocaleString('en-IN')}</td>
+          <td class="p-3">₹${Number(rec.rate_per_token).toFixed(2)}</td>
+          <td class="p-3 font-semibold text-emerald-400">₹${Number(rec.final_payable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+          <td class="p-3">${statusBadge}</td>
+          ${userRole === 'admin' ? `
+            <td class="p-3 text-right">
+              ${rec.payment_status !== 'Paid' ? `
+                <button onclick="markAsPaid('${rec.id}')" class="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded text-[10px]">Mark Paid</button>
+              ` : '<span class="text-xs text-slate-600">Done</span>'}
+            </td>
+          ` : ''}
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function calculateStats() {
+      let tokens = 0, gross = 0, paid = 0, pending = 0;
+      recordsList.forEach(r => {
+        tokens += Number(r.token_count) || 0;
+        const finalAmount = Number(r.final_payable) || 0;
+        gross += finalAmount;
+        if (r.payment_status === 'Paid') paid += finalAmount;
+        else pending += finalAmount;
+      });
+
+      document.getElementById('statTokens').textContent = tokens.toLocaleString('en-IN');
+      document.getElementById('statGross').textContent = '₹' + gross.toLocaleString('en-IN', {minimumFractionDigits: 2});
+      document.getElementById('statPaid').textContent = '₹' + paid.toLocaleString('en-IN', {minimumFractionDigits: 2});
+      document.getElementById('statPending').textContent = '₹' + pending.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    }
+
+    async function saveRecord(e) {
+      e.preventDefault();
+      const model_id = document.getElementById('recordModel').value;
+      const week_start_date = document.getElementById('recordStart').value;
+      const week_end_date = document.getElementById('recordEnd').value;
+      const token_count = parseInt(document.getElementById('recordTokens').value, 10);
+      const rate_per_token = parseFloat(document.getElementById('recordRate').value);
+      const adjustments = parseFloat(document.getElementById('recordAdj').value) || 0;
+
+      const { error } = await supabase.from('weekly_records').insert([{
+        model_id,
+        week_start_date,
+        week_end_date,
+        token_count,
+        rate_per_token,
+        adjustments
+      }]);
+
+      if (error) {
+        alert("பிழை (Error): " + error.message);
+      } else {
+        alert("பதிவு வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+        document.getElementById('recordForm').reset();
+        await loadRecords();
+      }
+    }
+
+    async function markAsPaid(recordId) {
+      if (!confirm("இதை 'Paid' என உறுதிப்படுத்துகிறீர்களா?")) return;
+      const { error } = await supabase.from('weekly_records').update({
+        payment_status: 'Paid',
+        payment_date: new Date().toISOString().split('T')[0]
+      }).eq('id', recordId);
+
+      if (error) alert(error.message);
+      else await loadRecords();
+    }
+
+    function exportCSV() {
+      if (!recordsList.length) return alert("பதிவுகள் இல்லை!");
+      let csv = "Model,Start Date,End Date,Tokens,Rate,Gross,Adjustments,Final Payable,Status\n";
+      recordsList.forEach(r => {
+        csv += `"${r.models?.name || ''}","${r.week_start_date}","${r.week_end_date}",${r.token_count},${r.rate_per_token},${r.gross_earnings},${r.adjustments},${r.final_payable},"${r.payment_status}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `STRIPFAM_Records_${new Date().toISOString().slice(0,10)}.csv`);
+      a.click();
+    }
+  </script>
+</body>
+  </html>
+  
